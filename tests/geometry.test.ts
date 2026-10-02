@@ -4,9 +4,9 @@ import {
   noiseAt,
   rotatePoint,
   shapeCells,
-  stepAngle,
   stepBounce,
-} from "../src/snippet/pov";
+  stepPingPong,
+} from "../src/snippet/geometry";
 
 describe("rotatePoint", () => {
   it("leaves a point unchanged at angle 0", () => {
@@ -74,34 +74,41 @@ describe("centerOffsets", () => {
   });
 });
 
-describe("stepAngle", () => {
+describe("stepPingPong", () => {
   it("advances by speed in the current direction below the cap", () => {
-    expect(stepAngle(0, 1, 0.1, 1)).toEqual({ angle: 0.1, dir: 1 });
-    expect(stepAngle(0, -1, 0.1, 1)).toEqual({ angle: -0.1, dir: -1 });
+    expect(stepPingPong(0, 1, 0.1, 1)).toEqual({ value: 0.1, dir: 1 });
+    expect(stepPingPong(0, -1, 0.1, 1)).toEqual({ value: -0.1, dir: -1 });
   });
 
   it("clamps and reverses at the positive cap", () => {
-    const r = stepAngle(0.95, 1, 0.1, 1);
-    expect(r.angle).toBe(1);
+    const r = stepPingPong(0.95, 1, 0.1, 1);
+    expect(r.value).toBe(1);
     expect(r.dir).toBe(-1);
   });
 
   it("clamps and reverses at the negative cap", () => {
-    const r = stepAngle(-0.95, -1, 0.1, 1);
-    expect(r.angle).toBe(-1);
+    const r = stepPingPong(-0.95, -1, 0.1, 1);
+    expect(r.value).toBe(-1);
     expect(r.dir).toBe(1);
   });
 
-  it("never exceeds the cap over many steps (stays readable)", () => {
-    let angle = 0;
-    let dir = 1;
+  it("never exceeds the cap over many steps", () => {
+    let state = { value: 0, dir: 1 };
     const max = Math.PI / 8;
     for (let i = 0; i < 1000; i++) {
-      const s = stepAngle(angle, dir, 0.05, max);
-      angle = s.angle;
-      dir = s.dir;
-      expect(Math.abs(angle)).toBeLessThanOrEqual(max);
+      state = stepPingPong(state.value, state.dir, 0.05, max);
+      expect(Math.abs(state.value)).toBeLessThanOrEqual(max);
     }
+  });
+
+  it("sweeps the whole integer range with a unit step (background sway)", () => {
+    let state = { value: 0, dir: 1 };
+    const seen = new Set<number>();
+    for (let i = 0; i < 20; i++) {
+      state = stepPingPong(state.value, state.dir, 1, 3);
+      seen.add(state.value);
+    }
+    expect([...seen].sort((a, b) => a - b)).toEqual([-3, -2, -1, 0, 1, 2, 3]);
   });
 });
 

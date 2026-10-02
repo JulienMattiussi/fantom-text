@@ -1,212 +1,147 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
-import {
-  createPovText,
-  type PovBackground,
-  type PovController,
-  type PovMode,
-} from "./snippet/pov";
+import FantomCanvas from "./components/FantomCanvas.vue";
+import IntegrationGuide from "./components/IntegrationGuide.vue";
+import WorkshopPanel from "./components/WorkshopPanel.vue";
+import { REPO_URL } from "./site";
 
-const canvasRef = useTemplateRef<HTMLCanvasElement>("canvas");
-
-const text = ref("FANTOM");
-const mode = ref<PovMode>("outline");
-const background = ref<PovBackground>("static");
-const stepMs = ref(55);
-const flowSpeed = ref(1);
-const oscAmplitude = ref(4);
-const speed = ref(1.4);
-const running = ref(true);
-
-let engine: PovController | null = null;
-
-function build(): void {
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-  engine?.destroy();
-  engine = createPovText(canvas, {
-    text: text.value,
-    mode: mode.value,
-    background: background.value,
-    stepMs: stepMs.value,
-    flowSpeed: flowSpeed.value,
-    oscAmplitude: oscAmplitude.value,
-    speed: speed.value,
-    pauseOnClick: true,
-  });
-  running.value = engine.running();
-}
-
-onMounted(build);
-
-watch(text, (value) => engine?.setText(value));
-
-// Changing any of these needs a full rebuild, so recreate.
-watch([mode, background, stepMs, flowSpeed, oscAmplitude, speed], build);
-
-function toggle(): void {
-  engine?.toggle();
-  running.value = engine?.running() ?? false;
-}
-
-onBeforeUnmount(() => engine?.destroy());
+const gallery = [
+  {
+    title: "Fond statique",
+    text: "BOUH",
+    background: "static" as const,
+    note: "Le bruit est fixe : seules les cellules sous le contour du texte s'inversent.",
+  },
+  {
+    title: "Fond oscillant",
+    text: "COUCOU",
+    background: "oscillate" as const,
+    note: "Le fond ondule à l'horizontale, le texte à la verticale.",
+  },
+];
 </script>
 
 <template>
-  <main class="page">
-    <header class="hero">
-      <h1>fantom-text 👻</h1>
-      <p class="tagline">
-        Un texte fantome : il n'existe que lorsqu'il bouge. Fige-le et il
-        disparait dans le bruit.
+  <main class="demo">
+    <header>
+      <img class="logo" src="/favicon.svg" alt="" aria-hidden="true" />
+      <h1><span>fantom</span><span class="accent">text</span></h1>
+      <p>
+        Un texte caché dans le bruit, lisible uniquement tant qu'il bouge. Figez
+        l'image : il disparaît. Un petit widget à déposer sur n'importe quelle
+        page web.
+      </p>
+      <p class="cta">
+        <a href="#integration" class="cta-button">Comment l'intégrer →</a>
+        <a href="#atelier" class="link">Jouer avec les réglages</a>
       </p>
     </header>
 
-    <section class="stage">
-      <canvas ref="canvas" width="640" height="320" class="pov"></canvas>
-      <p class="hint">
-        Cliquez sur l'image (ou le bouton) pour figer / relancer.
-      </p>
+    <section v-for="item in gallery" :key="item.title">
+      <h2>{{ item.title }}</h2>
+      <FantomCanvas
+        class="stage"
+        :options="{
+          text: item.text,
+          background: item.background,
+          width: 480,
+          height: 240,
+          fontSize: 100,
+        }"
+      />
+      <p class="note">{{ item.note }}</p>
     </section>
 
-    <section class="controls">
-      <label class="field">
-        <span>Texte</span>
-        <input v-model="text" type="text" maxlength="12" />
-      </label>
+    <WorkshopPanel />
 
-      <label class="field">
-        <span>Rendu</span>
-        <select v-model="mode" :disabled="background !== 'static'">
-          <option value="outline">Contour</option>
-          <option value="fill">Plein</option>
-        </select>
-      </label>
+    <IntegrationGuide />
 
-      <label class="field">
-        <span>Fond</span>
-        <select v-model="background">
-          <option value="static">Statique</option>
-          <option value="dynamic">Dynamique</option>
-          <option value="oscillate">Oscillant</option>
-        </select>
-      </label>
-
-      <label v-if="background !== 'static'" class="field">
-        <span
-          >Lenteur du fond : {{ stepMs === 0 ? "max" : stepMs + " ms" }}</span
-        >
-        <input
-          v-model.number="stepMs"
-          type="range"
-          min="0"
-          max="160"
-          step="1"
-        />
-      </label>
-
-      <label v-if="background === 'dynamic'" class="field">
-        <span>Vitesse du texte : {{ flowSpeed }} cell/tick</span>
-        <input
-          v-model.number="flowSpeed"
-          type="range"
-          min="1"
-          max="6"
-          step="1"
-        />
-      </label>
-
-      <label v-if="background === 'oscillate'" class="field">
-        <span>Amplitude : {{ oscAmplitude }} cell</span>
-        <input
-          v-model.number="oscAmplitude"
-          type="range"
-          min="1"
-          max="10"
-          step="1"
-        />
-      </label>
-
-      <label v-if="background === 'static'" class="field">
-        <span>Vitesse du texte : {{ speed }} px</span>
-        <input
-          v-model.number="speed"
-          type="range"
-          min="0.4"
-          max="4"
-          step="0.2"
-        />
-      </label>
-
-      <button type="button" class="toggle" @click="toggle">
-        {{ running ? "Figer" : "Relancer" }}
-      </button>
-    </section>
+    <footer class="footer">
+      With <span aria-label="love">❤️</span> by
+      <a class="link" :href="REPO_URL" target="_blank" rel="noopener noreferrer"
+        >YavaDeus</a
+      >
+      · © {{ new Date().getFullYear() }}
+    </footer>
   </main>
 </template>
 
 <style scoped>
-.page {
-  max-width: 720px;
+.demo {
+  max-width: 760px;
   margin: 0 auto;
   padding: 48px 24px 96px;
 }
-.hero h1 {
-  margin: 0 0 8px;
-  font-size: 2rem;
+
+header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 56px;
+  text-align: center;
 }
-.tagline {
-  margin: 0;
-  color: var(--muted);
-}
-.stage {
-  margin-top: 32px;
-}
-.pov {
+
+.logo {
   display: block;
-  width: 100%;
+  width: clamp(72px, 14vw, 104px);
   height: auto;
-  max-width: 640px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  image-rendering: pixelated;
+  margin-bottom: 20px;
 }
-.hint {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
+
+h1 {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 16px;
+  font-size: clamp(2.75rem, 9vw, 4.75rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+header p {
+  max-width: 540px;
+  margin: 0 auto;
+  line-height: 1.55;
   color: var(--muted);
 }
-.controls {
+
+header .cta {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
   gap: 16px;
   margin-top: 24px;
 }
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.85rem;
+
+.cta-button {
+  padding: 9px 20px;
+  font-weight: 600;
+  color: var(--accent-fg);
+  text-decoration: none;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: transform 0.15s ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-1px);
+}
+
+.footer {
+  margin-top: 64px;
+  padding-top: 24px;
+  font-size: 0.875rem;
   color: var(--muted);
+  text-align: center;
+  border-top: 1px solid var(--border);
 }
-.field input,
-.field select {
-  padding: 8px 10px;
-  font: inherit;
-  color: var(--fg);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.toggle {
-  padding: 9px 18px;
-  font: inherit;
-  color: #fff;
-  background: #6b4de6;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+
+@media (max-width: 640px) {
+  .demo {
+    padding: 32px 16px 64px;
+  }
 }
 </style>

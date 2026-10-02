@@ -4,20 +4,24 @@
     system-ui,
     -apple-system,
     sans-serif;
-  --bg: #f5f4f0;
-  --fg: #1a1a1a;
-  --muted: #6b6b6b;
+  --bg: #f4f3f8;
+  --fg: #16151d;
+  --muted: #66637a;
   --card: #ffffff;
-  --border: #e3e0d8;
+  --border: #e2dfec;
+  --accent: #6b4de6;
+  --accent-fg: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17171a;
-    --fg: #ececec;
-    --muted: #9a9a9a;
-    --card: #212127;
-    --border: #34343c;
+    --bg: #0e0d14;
+    --fg: #f3f1f8;
+    --muted: #a7a4b8;
+    --card: #17161f;
+    --border: #2a2838;
+    --accent: #9b7bff;
+    --accent-fg: #0e0d14;
   }
 }
 
@@ -30,4 +34,68 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--fg);
+  accent-color: var(--accent);
+}
+
+/* Shared demo building blocks (used across components). */
+
+section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 56px 0;
+}
+
+h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.card {
+  padding: 28px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.stage {
+  width: 100%;
+  max-width: 640px;
+}
+
+.note {
+  max-width: 480px;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+}
+
+.link {
+  font-weight: 600;
+  color: var(--fg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+
+.link:hover {
+  border-bottom-color: var(--fg);
+}
+
+code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 20px 16px;
+  }
 }

@@ -7,13 +7,8 @@
  *   <div data-fantom-text data-text="BOO"></div>
  *   <script src="https://<host>/fantom-text.js"></script>
  *
- * Supported attributes on [data-fantom-text]:
- *   - data-text       : the hidden text. Default "FANTOM".
- *   - data-mode       : "outline" (default) or "fill" (static background only).
- *   - data-background : "static" (default), "dynamic" or "oscillate".
- *   - data-width      : canvas width in pixels. Default 640.
- *   - data-height     : canvas height in pixels. Default 320.
  * The element may itself be a <canvas>; otherwise one is created inside it.
+ * Attributes and options are documented in the README.
  *
  * Imperative API (exposed on window.FantomText):
  *   - scan()               : re-scan the DOM for new [data-fantom-text] nodes
@@ -22,13 +17,13 @@
 
 import {
   createPovText,
+  DEFAULT_TEXT,
   type PovBackground,
   type PovController,
   type PovMode,
   type PovOptions,
 } from "./pov";
 
-const DEFAULT_TEXT = "FANTOM";
 const DEFAULT_WIDTH = 640;
 const DEFAULT_HEIGHT = 320;
 
@@ -57,11 +52,7 @@ declare global {
 }
 
 const MODES: readonly PovMode[] = ["outline", "fill"];
-const BACKGROUNDS: readonly PovBackground[] = [
-  "static",
-  "dynamic",
-  "oscillate",
-];
+const BACKGROUNDS: readonly PovBackground[] = ["static", "oscillate"];
 
 const mounted = new WeakMap<HTMLElement, Instance>();
 
@@ -77,7 +68,16 @@ function positiveInt(value: string | null): number | undefined {
   return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-function resolveOptions(el: HTMLElement, options: MountOptions): MountOptions {
+type ResolvedOptions = MountOptions & {
+  text: string;
+  width: number;
+  height: number;
+};
+
+function resolveOptions(
+  el: HTMLElement,
+  options: MountOptions,
+): ResolvedOptions {
   return {
     ...options,
     text: options.text ?? el.getAttribute("data-text") ?? DEFAULT_TEXT,
@@ -106,12 +106,15 @@ export function mount(el: HTMLElement, options: MountOptions = {}): Instance {
   if (ownsCanvas) {
     canvas.style.display = "block";
     canvas.style.maxWidth = "100%";
+    // Keep the aspect ratio when max-width shrinks it on narrow screens.
+    canvas.style.height = "auto";
     el.appendChild(canvas);
   }
-  canvas.width = opts.width ?? DEFAULT_WIDTH;
-  canvas.height = opts.height ?? DEFAULT_HEIGHT;
+  canvas.width = opts.width;
+  canvas.height = opts.height;
   // The text is invisible on any still frame, so expose it to assistive tech.
   canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", opts.text);
 
   const controller = createPovText(canvas, opts);
 
@@ -119,7 +122,6 @@ export function mount(el: HTMLElement, options: MountOptions = {}): Instance {
     canvas.setAttribute("aria-label", text);
     controller.setText(text);
   }
-  canvas.setAttribute("aria-label", opts.text ?? DEFAULT_TEXT);
 
   const instance: Instance = {
     element: el,

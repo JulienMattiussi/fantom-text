@@ -11,13 +11,23 @@
  * Concept adapted from optical.toys "POV static cube": there the moving shape
  * is a cube's edges; here it is the outline (or fill) of arbitrary text.
  *
- * Zero dependency, DOM/canvas only. The pure geometry helpers below are split
- * out so they can be unit-tested without a browser.
+ * Zero dependency, DOM/canvas only. The pure helpers live in geometry.ts.
  */
 
-export type PovMode = "outline" | "fill";
+import {
+  centerOffsets,
+  noiseAt,
+  rotatePoint,
+  shapeCells,
+  stepBounce,
+  stepPingPong,
+  type Point,
+  type PovMode,
+} from "./geometry";
 
-export type PovBackground = "static" | "dynamic" | "oscillate";
+export type { PovMode };
+
+export type PovBackground = "static" | "oscillate";
 
 export type PovOptions = {
   text?: string;
@@ -40,23 +50,15 @@ export type PovOptions = {
   /**
    * Background strategy.
    * - "static": noise drawn once, only the text cells flip (original toy).
-   *   Readable, but defeated by a naive frame difference.
-   * - "dynamic": the whole field is re-randomised every frame; the text is a
-   *   region of coherently scrolling noise. Resists a naive frame difference.
    * - "oscillate": a fixed noise texture gently sways; the text region sways in
-   *   a different direction. The shape reads from motion contrast (not flicker),
-   *   and both regions shift by the same amount each tick, so a naive frame
-   *   difference stays uniform.
+   *   a different direction. The shape reads from motion contrast, not flicker.
    */
   background?: PovBackground;
-  /** Dynamic mode only: internal texture scroll, in cells per frame. */
-  flowSpeed?: number;
   /** Oscillate mode only: sway amplitude in cells. */
   oscAmplitude?: number;
   /**
    * Minimum milliseconds between field updates (0 = every animation frame).
-   * Higher = slower, calmer motion. Both background and text advance on the
-   * same tick, so the anti-diff statistics are preserved.
+   * Higher = slower, calmer motion.
    */
   stepMs?: number;
   /** Toggle motion when the canvas is clicked, like the original toy. */
@@ -74,135 +76,10 @@ export type PovController = {
   destroy: () => void;
 };
 
-/** Cell coordinate in a grid, in cell units. */
-export type Cell = { x: number; y: number };
-
-/**
- * Rotate a point around the origin. Pure.
- */
-export function rotatePoint(
-  x: number,
-  y: number,
-  angle: number,
-): { x: number; y: number } {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return { x: x * cos - y * sin, y: x * sin + y * cos };
-}
-
-/**
- * Given a boolean ink mask (mask[y][x] = true where the glyph is drawn),
- * return the cells that make up the shape: for "outline", only ink cells that
- * touch a non-ink cell (4-neighbourhood); for "fill", every ink cell. Pure.
- */
-export function shapeCells(mask: boolean[][], mode: PovMode): Cell[] {
-  const cells: Cell[] = [];
-  for (let y = 0; y < mask.length; y++) {
-    const row = mask[y];
-    if (!row) continue;
-    for (let x = 0; x < row.length; x++) {
-      if (!row[x]) continue;
-      if (mode === "fill") {
-        cells.push({ x, y });
-        continue;
-      }
-      const isEdge =
-        !mask[y - 1]?.[x] || !mask[y + 1]?.[x] || !row[x - 1] || !row[x + 1];
-      if (isEdge) cells.push({ x, y });
-    }
-  }
-  return cells;
-}
-
-/**
- * Re-centre a list of cells around their bounding-box centre, converting to
- * pixel offsets (multiplying by cellSize). Returns the offsets plus the half
- * extents used for wall bouncing. Pure.
- */
-export function centerOffsets(
-  cells: Cell[],
-  cellSize: number,
-): { offsets: Array<{ x: number; y: number }>; halfW: number; halfH: number } {
-  if (cells.length === 0) {
-    return { offsets: [], halfW: 0, halfH: 0 };
-  }
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const c of cells) {
-    if (c.x < minX) minX = c.x;
-    if (c.x > maxX) maxX = c.x;
-    if (c.y < minY) minY = c.y;
-    if (c.y > maxY) maxY = c.y;
-  }
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
-  const offsets = cells.map((c) => ({
-    x: (c.x - cx) * cellSize,
-    y: (c.y - cy) * cellSize,
-  }));
-  const halfW = ((maxX - minX) / 2) * cellSize;
-  const halfH = ((maxY - minY) / 2) * cellSize;
-  return { offsets, halfW, halfH };
-}
-
-/**
- * Advance one drifting coordinate, bouncing when the shape (half extent)
- * reaches a wall. Pure. Returns the new position and velocity.
- */
-export function stepBounce(
-  pos: number,
-  vel: number,
-  half: number,
-  limit: number,
-): { pos: number; vel: number } {
-  let p = pos + vel;
-  let v = vel;
-  if (p - half <= 0 || p + half >= limit) {
-    v = -v;
-    p += v;
-  }
-  return { pos: p, vel: v };
-}
-
-/**
- * Oscillate the rotation angle within [-max, +max] instead of spinning freely:
- * text tilted past a mild angle is unreadable even for a human, so the shape
- * gently rocks back and forth rather than turning upside down. Pure.
- */
-export function stepAngle(
-  angle: number,
-  dir: number,
-  speed: number,
-  max: number,
-): { angle: number; dir: number } {
-  let a = angle + speed * dir;
-  let d = dir;
-  if (a >= max) {
-    a = max;
-    d = -1;
-  } else if (a <= -max) {
-    a = -max;
-    d = 1;
-  }
-  return { angle: a, dir: d };
-}
-
-/**
- * Deterministic 0/1 value hash for integer coordinates, used as a stable noise
- * texture. Sampling it at a scrolling offset produces coherent motion: shifting
- * x by one advances the whole texture rigidly. Pure.
- */
-export function noiseAt(x: number, y: number, seed: number): 0 | 1 {
-  let h = (Math.trunc(x) * 374761393 + Math.trunc(y) * 668265263 + seed) | 0;
-  h = (h ^ (h >>> 13)) * 1274126177;
-  h ^= h >>> 16;
-  return (h & 1) as 0 | 1;
-}
+export const DEFAULT_TEXT = "FANTOM";
 
 const DEFAULTS = {
-  text: "FANTOM",
+  text: DEFAULT_TEXT,
   cellSize: 5,
   fontSize: 130,
   fontFamily: "system-ui, sans-serif",
@@ -211,7 +88,6 @@ const DEFAULTS = {
   maxRotation: Math.PI / 8,
   mode: "outline" as PovMode,
   background: "static" as PovBackground,
-  flowSpeed: 1,
   oscAmplitude: 4,
   stepMs: 55,
   pauseOnClick: true,
@@ -264,24 +140,24 @@ export function createPovText(
 ): PovController {
   const opts = { ...DEFAULTS, ...options };
   const rng = options.rng ?? Math.random;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("2d canvas context unavailable");
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("2d canvas context unavailable");
+  // Typed non-null so the hoisted render functions below keep the narrowing.
+  const ctx: CanvasRenderingContext2D = context;
 
   const cell = opts.cellSize;
   const width = canvas.width;
   const height = canvas.height;
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
-  const dynamic = opts.background === "dynamic";
   const oscillate = opts.background === "oscillate";
-  const buffered = dynamic || oscillate;
   const seed = Math.floor(rng() * 0x7fffffff);
   // Never let the text swing more than 180 degrees total (PI/2 each way).
   const maxRotation = Math.min(Math.abs(opts.maxRotation), Math.PI / 2);
 
   // --- static-mode state (persistent noise, only text cells flip) ---
   const grid = new Uint8Array(cols * rows);
-  let offsets: Array<{ x: number; y: number }> = [];
+  let offsets: Point[] = [];
   let halfW = 0;
   let halfH = 0;
   let cx = width / 2;
@@ -289,15 +165,12 @@ export function createPovText(
   let vx = opts.speed;
   let vy = opts.speed;
 
-  // --- dynamic-mode state (whole field re-randomised, text texture scrolls) ---
-  let filled: Cell[] = [];
-  let cxCells = 0;
-  let cyCells = 0;
-  let scroll = 0;
+  // --- oscillate-mode state (fixed texture, background and text sway apart) ---
+  // Rendered at cell resolution into an offscreen buffer, then scaled up.
   let offCanvas: HTMLCanvasElement | null = null;
   let offCtx: CanvasRenderingContext2D | null = null;
   let buffer: ImageData | null = null;
-  if (buffered) {
+  if (oscillate) {
     offCanvas = document.createElement("canvas");
     offCanvas.width = cols;
     offCanvas.height = rows;
@@ -306,31 +179,14 @@ export function createPovText(
     ctx.imageSmoothingEnabled = false;
   }
 
-  // --- oscillate-mode state (fixed texture, background and text sway apart) ---
-  // 1 cell per tick each, so both regions change at the same rate (no readable
-  // low-difference hole), but along different axes (motion contrast reveals it).
+  // Both regions shift 1 cell per tick along different axes, so they change at
+  // the same rate and only the direction of motion sets the text apart.
   const textMask = new Uint8Array(oscillate ? cols * rows : 0);
-  let bgPos = 0;
-  let bgDir = 1;
-  let txPos = opts.oscAmplitude; // phase-shifted so both are rarely still
-  let txDir = -1;
+  const amplitude = Math.max(1, Math.round(opts.oscAmplitude));
+  let bg = { value: 0, dir: 1 };
+  let tx = { value: amplitude, dir: -1 }; // phase-shifted so both are rarely still
 
-  function swayStep(pos: number, dir: number): { pos: number; dir: number } {
-    const amp = Math.max(1, Math.round(opts.oscAmplitude));
-    let p = pos + dir;
-    let d = dir;
-    if (p >= amp) {
-      p = amp;
-      d = -1;
-    } else if (p <= -amp) {
-      p = -amp;
-      d = 1;
-    }
-    return { pos: p, dir: d };
-  }
-
-  let angle = 0;
-  let rotDir = 1;
+  let tilt = { value: 0, dir: 1 };
   let running = false;
   let raf: number | null = null;
   let lastStep = 0;
@@ -340,8 +196,8 @@ export function createPovText(
       for (let gx = 0; gx < cols; gx++) {
         const on = rng() < 0.5 ? 1 : 0;
         grid[gy * cols + gx] = on;
-        ctx!.fillStyle = on ? "#fff" : "#000";
-        ctx!.fillRect(gx * cell, gy * cell, cell, cell);
+        ctx.fillStyle = on ? "#fff" : "#000";
+        ctx.fillRect(gx * cell, gy * cell, cell, cell);
       }
     }
   }
@@ -353,38 +209,20 @@ export function createPovText(
     const idx = gy * cols + gx;
     const next = (grid[idx] ?? 0) ^ 1;
     grid[idx] = next;
-    ctx!.fillStyle = next ? "#fff" : "#000";
-    ctx!.fillRect(gx * cell, gy * cell, cell, cell);
+    ctx.fillStyle = next ? "#fff" : "#000";
+    ctx.fillRect(gx * cell, gy * cell, cell, cell);
   }
 
   function rebuild(text: string): void {
     const mask = buildTextMask(text, opts.fontSize, opts.fontFamily, cell);
-    if (buffered) {
-      const cells = shapeCells(mask, "fill");
-      let minX = Infinity;
-      let maxX = -Infinity;
-      let minY = Infinity;
-      let maxY = -Infinity;
-      for (const c of cells) {
-        if (c.x < minX) minX = c.x;
-        if (c.x > maxX) maxX = c.x;
-        if (c.y < minY) minY = c.y;
-        if (c.y > maxY) maxY = c.y;
-      }
-      filled = cells;
-      cxCells = cells.length ? (minX + maxX) / 2 : 0;
-      cyCells = cells.length ? (minY + maxY) / 2 : 0;
-      if (oscillate) {
-        // Stamp the (fixed, centred) text region into a membership grid.
-        textMask.fill(0);
-        const ccx = cols / 2;
-        const ccy = rows / 2;
-        for (const c of cells) {
-          const gx = Math.round(ccx + (c.x - cxCells));
-          const gy = Math.round(ccy + (c.y - cyCells));
-          if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
-          textMask[gy * cols + gx] = 1;
-        }
+    if (oscillate) {
+      // Stamp the (fixed, centred) text region into a membership grid.
+      textMask.fill(0);
+      for (const o of centerOffsets(shapeCells(mask, "fill"), 1).offsets) {
+        const gx = Math.round(cols / 2 + o.x);
+        const gy = Math.round(rows / 2 + o.y);
+        if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
+        textMask[gy * cols + gx] = 1;
       }
       return;
     }
@@ -396,11 +234,11 @@ export function createPovText(
     cy = Math.min(Math.max(cy, halfH), height - halfH);
   }
 
-  function setCell(data: Uint8ClampedArray, idx: number, on: number): void {
+  function setCell(data: Uint8ClampedArray, idx: number, gray: number): void {
     const b = idx * 4;
-    data[b] = on;
-    data[b + 1] = on;
-    data[b + 2] = on;
+    data[b] = gray;
+    data[b + 1] = gray;
+    data[b + 2] = gray;
     data[b + 3] = 255;
   }
 
@@ -411,81 +249,41 @@ export function createPovText(
     const ny = stepBounce(cy, vy, halfH, height);
     cy = ny.pos;
     vy = ny.vel;
-    const na = stepAngle(angle, rotDir, opts.rotationSpeed, maxRotation);
-    angle = na.angle;
-    rotDir = na.dir;
+    tilt = stepPingPong(tilt.value, tilt.dir, opts.rotationSpeed, maxRotation);
 
     for (const o of offsets) {
-      const r = rotatePoint(o.x, o.y, angle);
+      const r = rotatePoint(o.x, o.y, tilt.value);
       invertCell(cx + r.x, cy + r.y);
     }
   }
 
-  function renderDynamic(): void {
-    if (!buffer || !offCtx || !offCanvas) return;
-    scroll += opts.flowSpeed;
-    const na = stepAngle(angle, rotDir, opts.rotationSpeed, maxRotation);
-    angle = na.angle;
-    rotDir = na.dir;
-
-    const data = buffer.data;
-    // Re-randomise the whole field: a naive frame difference is noise here.
-    for (let i = 0; i < cols * rows; i++) {
-      setCell(data, i, rng() < 0.5 ? 255 : 0);
-    }
-    // Overlay the text as a coherently scrolling noise texture.
-    const sx = Math.floor(scroll);
-    const centerX = width / 2;
-    const centerY = height / 2;
-    for (const c of filled) {
-      const r = rotatePoint(
-        (c.x - cxCells) * cell,
-        (c.y - cyCells) * cell,
-        angle,
-      );
-      const gx = Math.floor((centerX + r.x) / cell);
-      const gy = Math.floor((centerY + r.y) / cell);
-      if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
-      setCell(data, gy * cols + gx, noiseAt(c.x - sx, c.y, seed) ? 255 : 0);
-    }
-    offCtx.putImageData(buffer, 0, 0);
-    ctx!.drawImage(offCanvas, 0, 0, width, height);
-  }
-
   function renderOscillate(): void {
     if (!buffer || !offCtx || !offCanvas) return;
-    const bg = swayStep(bgPos, bgDir);
-    bgPos = bg.pos;
-    bgDir = bg.dir;
-    const tx = swayStep(txPos, txDir);
-    txPos = tx.pos;
-    txDir = tx.dir;
+    bg = stepPingPong(bg.value, bg.dir, 1, amplitude);
+    tx = stepPingPong(tx.value, tx.dir, 1, amplitude);
 
     const data = buffer.data;
     for (let gy = 0; gy < rows; gy++) {
       for (let gx = 0; gx < cols; gx++) {
         const idx = gy * cols + gx;
-        // Background sways horizontally, text sways vertically: same 1-cell
-        // shift per tick, different direction.
+        // Background sways horizontally, text vertically.
         const on = textMask[idx]
-          ? noiseAt(gx, gy - txPos, seed)
-          : noiseAt(gx - bgPos, gy, seed);
+          ? noiseAt(gx, gy - tx.value, seed)
+          : noiseAt(gx - bg.value, gy, seed);
         setCell(data, idx, on ? 255 : 0);
       }
     }
     offCtx.putImageData(buffer, 0, 0);
-    ctx!.drawImage(offCanvas, 0, 0, width, height);
+    ctx.drawImage(offCanvas, 0, 0, width, height);
   }
 
   function frame(now: number): void {
     if (!running) return;
     raf = requestAnimationFrame(frame);
-    // Throttle to stepMs so the motion can be slowed without touching the
-    // per-tick statistics that keep the text hidden from a frame difference.
+    // Throttle to stepMs: slows the motion without changing what a tick does.
     if (now - lastStep < opts.stepMs) return;
     lastStep = now;
-    if (dynamic) renderDynamic();
-    else if (oscillate) renderOscillate();
+    if (oscillate) renderOscillate();
     else renderStatic();
   }
 
@@ -506,13 +304,9 @@ export function createPovText(
     else start();
   }
 
-  function onClick(): void {
-    toggle();
-  }
+  if (opts.pauseOnClick) canvas.addEventListener("click", toggle);
 
-  if (opts.pauseOnClick) canvas.addEventListener("click", onClick);
-
-  if (!buffered) drawNoise();
+  if (!oscillate) drawNoise();
   rebuild(opts.text);
   start();
 
@@ -521,10 +315,10 @@ export function createPovText(
     stop,
     toggle,
     running: () => running,
-    setText: (text: string) => rebuild(text),
+    setText: rebuild,
     destroy() {
       stop();
-      if (opts.pauseOnClick) canvas.removeEventListener("click", onClick);
+      if (opts.pauseOnClick) canvas.removeEventListener("click", toggle);
     },
   };
 }

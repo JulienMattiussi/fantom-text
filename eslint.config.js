@@ -25,7 +25,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ["tests/**/*.ts", "vite.config.ts", "vitest.config.ts"],
+    files: [
+      "tests/**/*.ts",
+      "scripts/**/*.ts",
+      "vite.config.ts",
+      "vitest.config.ts",
+    ],
     languageOptions: {
       globals: { ...globals.node },
     },

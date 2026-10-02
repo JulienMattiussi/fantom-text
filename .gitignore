@@ -5,6 +5,7 @@ coverage
 .DS_Store
 .vercel
 .env.local
+*.tsbuildinfo
 
 # built from src/snippet/fantom-text.ts
 public/fantom-text.js

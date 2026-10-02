@@ -35,17 +35,37 @@ src/
 ├── snippet/                 # LE SNIPPET : TypeScript vanilla, zero dependance
 │   ├── fantom-text.ts       # Point d'entree : mount/scan, API globale window.FantomText,
 │   │                        #   lecture des attributs data-*, creation du canevas, a11y
-│   └── pov.ts               # Moteur "texte par le mouvement" (canvas) : bruit noir/blanc + texte revele uniquement par le mouvement (helpers geometriques purs testables)
-├── App.vue                  # Page de demo (Vue) : canevas + controles du moteur POV
+│   ├── pov.ts               # Moteur canvas : fond statique ou oscillant, boucle d'animation, controleur
+│   └── geometry.ts          # Helpers PURS (zero DOM) : forme du texte, rebond, ping-pong, bruit
+├── components/
+│   ├── FantomCanvas.vue     # Demo : enveloppe autour de window.FantomText.mount (le vrai bundle)
+│   ├── WorkshopPanel.vue    # Demo : atelier de reglages en direct
+│   └── IntegrationGuide.vue # Demo : snippet a copier + attributs
+├── App.vue                  # Page de demo (Vue) : en-tete, galerie des fonds, pied de page
+├── site.ts                  # URLs du site et du depot (une seule source)
 ├── main.ts                  # Bootstrap Vue
-├── index.css                # Styles de la page de demo
+├── index.css                # Tokens de theme (clair/sombre) + blocs partages de la demo
 └── vite-env.d.ts            # Shims Vite / *.vue
+scripts/                     # Generation d'assets hors ligne (Node 24, TS execute nativement)
+├── build-og.ts              # og.svg + og.png (og:image) + favicon.svg
+├── build-preview.ts         # Rejoue le moteur (helpers de geometry.ts) en GIF anime pour le README
+├── raster.ts                # Helpers partages : RNG deterministe, masque de texte via resvg
+└── gifenc.d.ts              # Typage minimal de gifenc
 tests/
-├── pov.test.ts              # Helpers geometriques purs du moteur POV
+├── geometry.test.ts         # Helpers purs du moteur
 └── mount.test.ts            # Montage DOM (jsdom, contexte 2d simule)
 public/
-└── fantom-text.js           # Snippet builde (gitignore, produit par esbuild)
+├── fantom-text.js           # Snippet builde (gitignore, produit par esbuild)
+├── og.svg / og.png          # Apercu social (genere par make build-og)
+├── favicon.svg              # Icone (generee par make build-og)
+├── preview.gif              # Animation du README (generee par make build-preview)
+└── robots.txt / sitemap.xml # SEO
 ```
+
+La page de demo charge `public/fantom-text.js` via `index.html` et passe par
+`window.FantomText` : elle montre exactement ce que recoit une page hote.
+URL de production supposee : `https://fantom-text.vercel.app` (`src/site.ts`,
+meta OG de `index.html`, sitemap, README).
 
 ## Contraintes techniques
 
@@ -53,8 +73,8 @@ public/
   doit importer Vue ni aucune lib. Le snippet doit tenir en un seul fichier
   autonome, inclus via `<script src>` sur une page tierce.
 - **Vue est reserve a la demo.** Ne jamais faire dependre le snippet de Vue.
-- **Helpers purs sans DOM** dans `pov.ts` (geometrie, bruit) : testes sans
-  navigateur.
+- **Helpers purs sans DOM** dans `geometry.ts` : testes sans navigateur et
+  reutilises par les scripts d'assets (qui n'ont donc pas besoin des types DOM).
 - **TypeScript strict** : `noUnusedLocals`, `noUnusedParameters`,
   `noUncheckedIndexedAccess`, `noFallthroughCasesInSwitch` actives. Ne pas les
   desactiver.
@@ -82,6 +102,8 @@ Node 24 requis (`.nvmrc`, `engines` dans `package.json`) : lancer `nvm use`.
 | `make dev`           | Serveur Vite + esbuild watch sur le snippet (http://localhost:3108) |
 | `make build`         | Build snippet + demo dans `dist/`                                   |
 | `make build-snippet` | Build du snippet seul                                               |
+| `make build-og`      | Regenere og.svg, og.png et favicon.svg                              |
+| `make build-preview` | Regenere le GIF anime du README                                     |
 | `make lint`          | ESLint                                                              |
 | `make typecheck`     | Type-check (vue-tsc)                                                |
 | `make format`        | Formate avec Prettier                                               |

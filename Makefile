@@ -1,4 +1,4 @@
-.PHONY: help install dev build build-snippet preview test test-watch lint typecheck format format-check check clean
+.PHONY: help install dev build build-snippet build-og build-preview preview test test-watch lint typecheck format format-check check clean
 
 default: help
 
@@ -18,6 +18,12 @@ build: ## Build snippet + Vue demo into dist/
 
 build-snippet: ## Build the embeddable snippet only
 	npm run build:snippet
+
+build-og: ## Regenerate public/og.svg, og.png and favicon.svg
+	node scripts/build-og.ts
+
+build-preview: ## Regenerate the README animated preview (public/preview.gif)
+	node scripts/build-preview.ts
 
 preview: ## Preview the production build locally
 	npm run preview
