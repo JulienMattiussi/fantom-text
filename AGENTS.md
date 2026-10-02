@@ -1,0 +1,104 @@
+# fantom-text - Agent File
+
+## Description du projet
+
+**Texte fantome** embarquable sur n'importe quelle page web via un simple
+snippet : un canevas rempli de bruit noir/blanc dans lequel un texte n'est
+lisible **que lorsqu'il bouge** (une image figee n'est que du bruit). Projet de
+divertissement, sur le modele de
+[horloge-passe-partout](../passe-partout/horloge-passe-partout).
+
+Historique : le projet visait a l'origine un captcha ("capcha-fantom"). Une
+analyse a montre qu'il etait cassable par difference de frames ; la partie
+captcha a ete abandonnee, seul le generateur de texte fantome est conserve.
+
+Le snippet est du **TypeScript vanilla, zero dependance runtime**, bundle par
+esbuild en un fichier unique (`public/fantom-text.js`). Une page de
+**demonstration Vue 3** expose les reglages du moteur en direct.
+
+## Stack technique
+
+| Outil                                          | Usage                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| TypeScript (vanilla)                           | Le snippet : aucune dependance runtime                       |
+| esbuild                                        | Bundle le snippet en `public/fantom-text.js` (IIFE, minifie) |
+| Vue 3 + Vite                                   | Page de demonstration uniquement                             |
+| Vitest (jsdom)                                 | Tests unitaires (helpers purs + montage DOM)                 |
+| ESLint (typescript-eslint + eslint-plugin-vue) | Linting                                                      |
+| Prettier                                       | Formatage                                                    |
+| vue-tsc                                        | Type-check (inclut les SFC `.vue`)                           |
+
+## Architecture
+
+```
+src/
+├── snippet/                 # LE SNIPPET : TypeScript vanilla, zero dependance
+│   ├── fantom-text.ts       # Point d'entree : mount/scan, API globale window.FantomText,
+│   │                        #   lecture des attributs data-*, creation du canevas, a11y
+│   └── pov.ts               # Moteur "texte par le mouvement" (canvas) : bruit noir/blanc + texte revele uniquement par le mouvement (helpers geometriques purs testables)
+├── App.vue                  # Page de demo (Vue) : canevas + controles du moteur POV
+├── main.ts                  # Bootstrap Vue
+├── index.css                # Styles de la page de demo
+└── vite-env.d.ts            # Shims Vite / *.vue
+tests/
+├── pov.test.ts              # Helpers geometriques purs du moteur POV
+└── mount.test.ts            # Montage DOM (jsdom, contexte 2d simule)
+public/
+└── fantom-text.js           # Snippet builde (gitignore, produit par esbuild)
+```
+
+## Contraintes techniques
+
+- **Snippet = vanilla, zero dependance runtime.** Rien dans `src/snippet/` ne
+  doit importer Vue ni aucune lib. Le snippet doit tenir en un seul fichier
+  autonome, inclus via `<script src>` sur une page tierce.
+- **Vue est reserve a la demo.** Ne jamais faire dependre le snippet de Vue.
+- **Helpers purs sans DOM** dans `pov.ts` (geometrie, bruit) : testes sans
+  navigateur.
+- **TypeScript strict** : `noUnusedLocals`, `noUnusedParameters`,
+  `noUncheckedIndexedAccess`, `noFallthroughCasesInSwitch` actives. Ne pas les
+  desactiver.
+- **API globale stable** : `window.FantomText = { mount, scan }`. Auto-scan
+  des `[data-fantom-text]` au chargement.
+- **Accessibilite** : le texte etant invisible sur une image figee, le canevas
+  porte `role="img"` et un `aria-label` synchronise avec le texte affiche.
+
+## Regles de developpement
+
+- **Un fichier par preoccupation** ; viser des fichiers courts.
+- **Factoriser, ne pas dupliquer.** Pas de code mort (tout export utilise ou teste).
+- **Commentaires utiles seulement** : le pourquoi / le non-evident, pas de
+  paraphrase du code.
+- **Tests** : toute la logique pure est testee ; le montage DOM est teste sur
+  les interactions cles (rendu, attributs, setText, destroy, scan, a11y).
+
+## Commandes (Makefile)
+
+Node 24 requis (`.nvmrc`, `engines` dans `package.json`) : lancer `nvm use`.
+
+| Commande             | Effet                                                               |
+| -------------------- | ------------------------------------------------------------------- |
+| `make install`       | Installe les dependances                                            |
+| `make dev`           | Serveur Vite + esbuild watch sur le snippet (http://localhost:3108) |
+| `make build`         | Build snippet + demo dans `dist/`                                   |
+| `make build-snippet` | Build du snippet seul                                               |
+| `make lint`          | ESLint                                                              |
+| `make typecheck`     | Type-check (vue-tsc)                                                |
+| `make format`        | Formate avec Prettier                                               |
+| `make format-check`  | Verifie le formatage                                                |
+| `make test`          | Tests unitaires (`make test-watch` en watch)                        |
+| `make check`         | lint + typecheck + format-check + tests                             |
+
+## Qualite (avant de considerer une tache terminee)
+
+- `make check` doit passer (lint + typecheck + format-check + tests).
+
+## Conventions globales du depot
+
+- **Code en anglais** : commentaires, identifiants, noms de variables et de
+  fonctions. Seul le contenu affiche a l'utilisateur peut etre en francais.
+- **Commits** : pas de trailer `Co-Authored-By`. Auteur = le compte git de
+  Julien uniquement. Vaut aussi pour les descriptions de PR.
+- **Typographie** : ne jamais introduire de tiret long (em-dash ou en-dash)
+  dans le code, les chaines affichees, les commentaires ou la doc. Utiliser un
+  tiret ASCII, deux-points, parentheses, ou reformuler.

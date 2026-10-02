@@ -1,0 +1,5 @@
+node_modules
+dist
+coverage
+public/fantom-text.js
+public/fantom-text.js.map
