@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://fantom-text.vercel.app/"><strong>👻 Live demo →</strong></a>
+  <a href="https://fantom-text.yavadeus.dev/"><strong>👻 Live demo →</strong></a>
 </p>
 
 <p align="center">
@@ -55,7 +55,7 @@ Drop these two lines into any HTML page:
 
 ```html
 <div data-fantom-text data-text="BOO"></div>
-<script src="https://fantom-text.vercel.app/fantom-text.js"></script>
+<script src="https://fantom-text.yavadeus.dev/fantom-text.js"></script>
 ```
 
 That's it: a single file, ~5 KB minified, zero dependencies. The script scans

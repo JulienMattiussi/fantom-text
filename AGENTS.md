@@ -64,7 +64,7 @@ public/
 
 La page de demo charge `public/fantom-text.js` via `index.html` et passe par
 `window.FantomText` : elle montre exactement ce que recoit une page hote.
-URL de production supposee : `https://fantom-text.vercel.app` (`src/site.ts`,
+URL de production supposee : `https://fantom-text.yavadeus.dev` (`src/site.ts`,
 meta OG de `index.html`, sitemap, README).
 
 ## Contraintes techniques

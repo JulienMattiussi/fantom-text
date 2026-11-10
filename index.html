@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="canonical" href="https://fantom-text.vercel.app/" />
+    <link rel="canonical" href="https://fantom-text.yavadeus.dev/" />
     <title>fantom-text</title>
     <meta
       name="description"
@@ -17,14 +17,17 @@
       property="og:description"
       content="Un texte invisible dans le bruit, révélé uniquement par le mouvement. Fige-le : il disparaît."
     />
-    <meta property="og:image" content="https://fantom-text.vercel.app/og.png" />
+    <meta
+      property="og:image"
+      content="https://fantom-text.yavadeus.dev/og.png"
+    />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
       content="Le mot BOO révélé en violet dans un champ de bruit noir et blanc, à côté du titre fantom-text."
     />
-    <meta property="og:url" content="https://fantom-text.vercel.app" />
+    <meta property="og:url" content="https://fantom-text.yavadeus.dev" />
     <meta property="og:site_name" content="fantom-text" />
     <meta property="og:locale" content="fr_FR" />
 
@@ -36,10 +39,35 @@
     />
     <meta
       name="twitter:image"
-      content="https://fantom-text.vercel.app/og.png"
+      content="https://fantom-text.yavadeus.dev/og.png"
     />
 
     <script src="/fantom-text.js"></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "fantom-text",
+        "url": "https://fantom-text.yavadeus.dev/",
+        "description": "Un texte invisible dans le bruit, révélé uniquement par le mouvement. Un widget embarquable, zéro dépendance.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "fr",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Julien Mattiussi",
+          "alternateName": "yavadeus",
+          "url": "https://yavadeus.dev/"
+        },
+        "image": "https://fantom-text.yavadeus.dev/og.png"
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

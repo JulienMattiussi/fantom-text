@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A tiny embeddable, zero-dependency ghost text toy: text hidden in noise, visible only in motion.",
   "author": "YavaDeus",
-  "homepage": "https://fantom-text.vercel.app",
+  "homepage": "https://fantom-text.yavadeus.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/JulienMattiussi/fantom-text.git"
